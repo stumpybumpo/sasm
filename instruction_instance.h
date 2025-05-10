@@ -38,20 +38,25 @@ typedef struct {
 } prefixes_vex_t;
 
 typedef struct {
-    uint8_t instance_type : 2;
+    uint8_t length;
+} prefixes_nop_t;
+
+typedef struct {
+    uint8_t instance_type : 3;
     uint8_t has_modrm : 1;
-    uint8_t padding_1 : 1;
     uint8_t disp_size : 2;
     uint8_t imm_size : 2;
     union {
         prefixes_legacy_t legacy;
         prefixes_vex_t vex;
+        prefixes_nop_t nop;
     };
 } misc_t;
 
 #define INSTR_TYPE_LEGACY 1
 #define INSTR_TYPE_VEX    2
 #define INSTR_TYPE_3DNOW  3
+#define INSTR_TYPE_NOP    4
 
 #define PREFIX_LOCK  1
 #define PREFIX_REPNZ 2
@@ -134,6 +139,7 @@ typedef struct {
 #define instance_is_legacy(instr) (instance_type(instr) == INSTR_TYPE_LEGACY)
 #define instance_is_vex(instr) (instance_type(instr) == INSTR_TYPE_VEX)
 #define instance_is_3dnow(instr) (instance_type(instr) == INSTR_TYPE_3DNOW)
+#define instance_is_nop(instr) (instance_type(instr) == INSTR_TYPE_NOP)
 
 #define prefix_legacy(instr) ((instr).misc.legacy)
 #define prefix_vex(instr) ((instr).misc.vex)
@@ -156,6 +162,8 @@ typedef struct {
 #define prefix_vex_256(instr) (prefix_vex(instr).size_256)
 #define prefix_vex_implicit(instr) (prefix_vex(instr).implicit)
 #define prefix_vex_vexsize_override(instr) (prefix_vex(instr).vexsize_override)
+
+#define instance_nop_length(instr) ((instr).misc.nop.length)
 
 #define instance_is_invalid(instr) (opcode_len(instr) == 0)
 #define instance_is_valid(instr) (opcode_len(instr) != 0)

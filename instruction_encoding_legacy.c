@@ -330,22 +330,13 @@ static inline instr_instance_t instantiate_nop(instr_t instr) {
 
     uint8_t nop_length = immediate_data(arg_to_imm(instr.args[0]));
     instr_instance_t instance = {0};
-    instance_type(instance) = INSTR_TYPE_LEGACY;
+    instance_type(instance) = INSTR_TYPE_NOP;
 
-    switch (nop_length) {
-    case 1:
-        instance.opcode = make_opcode(0x90, 1);
-        return instance;
-    case 2:
-        instance.opcode = make_opcode(0x90, 1);
-        opsize_override(instance) = true;
-        return instance;
-    case 3:
-        instance.opcode = make_opcode(0x0f1f, 2);
-        has_modrm(instance) = true;
-        instance.modrm = make_modrm(0, 0, 0);
-        return instance;
-    // TODO add more (longer) nops
+    if (!(0 < nop_length && nop_length < 16)) {
+        return instr_instantiation_error;
     }
-    return instr_instantiation_error;
+
+    instance.opcode = make_opcode(0x90, 1);
+    instance_nop_length(instance) = nop_length;
+    return instance;
 }

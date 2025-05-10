@@ -65,6 +65,7 @@ static inline void write_legacy_instance(buffer_t*        buf,
     write_disp(buf, instance);
     write_imm(buf, instance);
 }
+
 static inline void write_vex_instance(buffer_t*        buf,
                                       instr_instance_t instance) {
     bool prefix_vex_short = !prefix_flag_x(instance) &&
@@ -101,11 +102,20 @@ static inline void write_vex_instance(buffer_t*        buf,
     write_imm(buf, instance);
 
 }
+
 static inline void write_3dnow_instance(buffer_t*        buf,
                                         instr_instance_t instance) {
     buf_write_16(buf, 0x0f0f);
     write_modrm_sib(buf, instance);
     write_disp(buf, instance);
+    write_opcode(buf, instance);
+}
+
+static inline void write_nop_instance(buffer_t*        buf,
+                                      instr_instance_t instance) {
+    for (int i = 1; i < instance_nop_length(instance); i++) {
+        buf_write_8(buf, 0x66);
+    }
     write_opcode(buf, instance);
 }
 
@@ -124,6 +134,9 @@ static inline void write_instruction_instance(buffer_t*        buf,
         break;
     case INSTR_TYPE_3DNOW:
         write_3dnow_instance(buf, instance);
+        break;
+    case INSTR_TYPE_NOP:
+        write_nop_instance(buf, instance);
         break;
     }
 }
