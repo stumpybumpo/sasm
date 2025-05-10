@@ -38,7 +38,7 @@ typedef struct {
 } prefixes_vex_t;
 
 typedef struct {
-    uint8_t length;
+    uint64_t length;
 } prefixes_nop_t;
 
 typedef struct {

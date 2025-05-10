@@ -324,17 +324,13 @@ static inline instr_instance_t instruction_instantiate(instr_t instr) {
 }
 
 static inline instr_instance_t instantiate_nop(instr_t instr) {
-    if (!arg_is_imm(instr.args[0]) || arg_size(instr.args[0]) != ARG_SIZE_8) {
+    if (!arg_is_imm(instr.args[0])) {
         return instr_instantiation_error;
     }
 
-    uint8_t nop_length = immediate_data(arg_to_imm(instr.args[0]));
+    uint64_t nop_length = immediate_data(arg_to_imm(instr.args[0]));
     instr_instance_t instance = {0};
     instance_type(instance) = INSTR_TYPE_NOP;
-
-    if (!(0 < nop_length && nop_length < 16)) {
-        return instr_instantiation_error;
-    }
 
     instance.opcode = make_opcode(0x90, 1);
     instance_nop_length(instance) = nop_length;

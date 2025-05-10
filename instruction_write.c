@@ -113,10 +113,19 @@ static inline void write_3dnow_instance(buffer_t*        buf,
 
 static inline void write_nop_instance(buffer_t*        buf,
                                       instr_instance_t instance) {
-    for (int i = 1; i < instance_nop_length(instance); i++) {
-        buf_write_8(buf, 0x66);
+    uint64_t nop_length = instance_nop_length(instance);
+    for (; nop_length > 15; nop_length -= 15) {
+        for (int i = 1; i < 15; i++) {
+            buf_write_8(buf, 0x66);
+        }
+        write_opcode(buf, instance);
     }
-    write_opcode(buf, instance);
+    if (nop_length) {
+        for (int i = 1; i < nop_length; i++) {
+            buf_write_8(buf, 0x66);
+        }
+        write_opcode(buf, instance);
+    }
 }
 
 static inline void write_instruction_instance(buffer_t*        buf,
