@@ -38,7 +38,7 @@ typedef struct {
 } prefixes_vex_t;
 
 typedef struct {
-    uint8_t prefix_type : 2;
+    uint8_t instance_type : 2;
     uint8_t has_modrm : 1;
     uint8_t padding_1 : 1;
     uint8_t disp_size : 2;
@@ -49,9 +49,9 @@ typedef struct {
     };
 } misc_t;
 
-#define PREFIX_TYPE_LEGACY 1
-#define PREFIX_TYPE_VEX    2
-#define PREFIX_TYPE_3DNOW  3
+#define INSTR_TYPE_LEGACY 1
+#define INSTR_TYPE_VEX    2
+#define INSTR_TYPE_3DNOW  3
 
 #define PREFIX_LOCK  1
 #define PREFIX_REPNZ 2
@@ -129,11 +129,11 @@ typedef struct {
 #define opcode_len(instr) ((instr).opcode.len)
 #define opcode_val(instr) ((instr).opcode.val)
 
-#define prefix_type(instr) ((instr).misc.prefix_type)
-#define prefix_is_none(instr) (!prefix_type(instr))
-#define prefix_is_legacy(instr) (prefix_type(instr) == PREFIX_TYPE_LEGACY)
-#define prefix_is_vex(instr) (prefix_type(instr) == PREFIX_TYPE_VEX)
-#define prefix_is_3dnow(instr) (prefix_type(instr) == PREFIX_TYPE_3DNOW)
+#define instance_type(instr) ((instr).misc.instance_type)
+#define instance_is_none(instr) (!instance_type(instr))
+#define instance_is_legacy(instr) (instance_type(instr) == INSTR_TYPE_LEGACY)
+#define instance_is_vex(instr) (instance_type(instr) == INSTR_TYPE_VEX)
+#define instance_is_3dnow(instr) (instance_type(instr) == INSTR_TYPE_3DNOW)
 
 #define prefix_legacy(instr) ((instr).misc.legacy)
 #define prefix_vex(instr) ((instr).misc.vex)

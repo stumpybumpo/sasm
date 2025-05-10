@@ -2,8 +2,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "instruction_schemata.h"
-
 ////////////////////////////////////////////////////////////////
 
 static inline instr_instance_t add_sizes_legacy(instr_instance_t instance,
@@ -32,7 +30,7 @@ static inline instr_instance_t instantiate_legacy(instr_t          instr,
     instr_instance_t instance = {0};
 
     instance.opcode = match.opcode;
-    prefix_type(instance) = PREFIX_TYPE_LEGACY;
+    instance_type(instance) = INSTR_TYPE_LEGACY;
 
     instance = add_sizes_legacy(instance, instr);
     if (instance_is_invalid(instance)) {
@@ -332,7 +330,7 @@ static inline instr_instance_t instantiate_nop(instr_t instr) {
 
     uint8_t nop_length = immediate_data(arg_to_imm(instr.args[0]));
     instr_instance_t instance = {0};
-    prefix_type(instance) = PREFIX_TYPE_LEGACY;
+    instance_type(instance) = INSTR_TYPE_LEGACY;
 
     switch (nop_length) {
     case 1:

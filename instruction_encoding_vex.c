@@ -2,8 +2,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "instruction_schemata.h"
-
 ////////////////////////////////////////////////////////////////
 
 static inline instr_instance_t add_sizes_vex(instr_instance_t instance,
@@ -32,7 +30,7 @@ static inline instr_instance_t instantiate_vex(instr_t          instr,
     instr_instance_t instance = {0};
 
     instance.opcode = match.opcode;
-    prefix_type(instance) = PREFIX_TYPE_LEGACY;
+    instance_type(instance) = INSTR_TYPE_LEGACY;
 
     instance = add_sizes_vex(instance, instr);
     if (instance_is_invalid(instance)) {

@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "instruction_schemata.h"
 #include "instruction_encoding_legacy.c"
 #include "instruction_encoding_vex.c"
 
@@ -12,104 +13,118 @@ static inline void write_disp(buffer_t* buf, instr_instance_t instance);
 static inline void write_imm(buffer_t* buf, instr_instance_t instance);
 static inline void write_modrm_sib(buffer_t* buf, instr_instance_t instance);
 
+static inline void write_legacy_instance(buffer_t*        buf,
+                                         instr_instance_t instance) {
+    switch (prefix_group_1(instance)) {
+    case PREFIX_LOCK:
+        buf_write_8(buf, 0xf0);
+        break;
+    case PREFIX_REPNZ:
+        buf_write_8(buf, 0xf2);
+        break;
+    case PREFIX_REPZ:
+        buf_write_8(buf, 0xf3);
+        break;
+    }
+    switch (prefix_group_2(instance)) {
+    case PREFIX_OVERRIDE_CS:
+        buf_write_8(buf, 0x2e);
+        break;
+    case PREFIX_OVERRIDE_SS:
+        buf_write_8(buf, 0x36);
+        break;
+    case PREFIX_OVERRIDE_DS:
+        buf_write_8(buf, 0x3e);
+        break;
+    case PREFIX_OVERRIDE_ES:
+        buf_write_8(buf, 0x26);
+        break;
+    case PREFIX_OVERRIDE_FS:
+        buf_write_8(buf, 0x64);
+        break;
+    case PREFIX_OVERRIDE_GS:
+        buf_write_8(buf, 0x65);
+        break;
+    }
+    if (prefix_group_3(instance)) {
+        buf_write_8(buf, 0x66);
+    }
+    if (prefix_group_4(instance)) {
+        buf_write_8(buf, 0x67);
+    }
+    if (prefix_has_rex(instance)) {
+        uint8_t rex_byte = 0x40;
+        rex_byte |= prefix_flag_w(instance) << 3;
+        rex_byte |= prefix_flag_r(instance) << 2;
+        rex_byte |= prefix_flag_x(instance) << 1;
+        rex_byte |= prefix_flag_b(instance);
+        buf_write_8(buf, rex_byte);
+    }
+    write_opcode(buf, instance);
+    write_modrm_sib(buf, instance);
+    write_disp(buf, instance);
+    write_imm(buf, instance);
+}
+static inline void write_vex_instance(buffer_t*        buf,
+                                      instr_instance_t instance) {
+    bool prefix_vex_short = !prefix_flag_x(instance) &&
+                            !prefix_flag_b(instance) &&
+                            !prefix_flag_w(instance) &&
+                            (prefix_vex_map_select(instance) == 1);
+    if (prefix_vex_short || prefix_vex_vexsize_override(instance)) {
+        uint8_t vex_byte_1 = 0;
+        vex_byte_1 ^= prefix_flag_r(instance) << 7;
+        vex_byte_1 ^= prefix_vex_op_2(instance) << 3;
+        vex_byte_1 |= prefix_vex_256(instance) << 2;
+        vex_byte_1 |= prefix_vex_implicit(instance);
+        buf_write_8(buf, 0xc5);
+        buf_write_8(buf, vex_byte_1);
+    }
+    else {
+        uint8_t vex_byte_1 = 0;
+        vex_byte_1 ^= prefix_flag_r(instance) << 7;
+        vex_byte_1 ^= prefix_flag_x(instance) << 6;
+        vex_byte_1 ^= prefix_flag_b(instance) << 5;
+        vex_byte_1 |= prefix_vex_map_select(instance);
+        uint8_t vex_byte_2 = 0;
+        vex_byte_2 |= prefix_flag_w(instance) << 7;
+        vex_byte_2 ^= prefix_vex_op_2(instance) << 3;
+        vex_byte_2 |= prefix_vex_256(instance) << 2;
+        vex_byte_2 |= prefix_vex_implicit(instance);
+        buf_write_8(buf, 0xc4);
+        buf_write_8(buf, vex_byte_1);
+        buf_write_8(buf, vex_byte_2);
+    }
+    write_opcode(buf, instance);
+    write_modrm_sib(buf, instance);
+    write_disp(buf, instance);
+    write_imm(buf, instance);
+
+}
+static inline void write_3dnow_instance(buffer_t*        buf,
+                                        instr_instance_t instance) {
+    buf_write_16(buf, 0x0f0f);
+    write_modrm_sib(buf, instance);
+    write_disp(buf, instance);
+    write_opcode(buf, instance);
+}
+
 static inline void write_instruction_instance(buffer_t*        buf,
                                               instr_instance_t instance) {
     if (instance_is_invalid(instance)) {
         return;
     }
 
-    switch (prefix_type(instance)) {
-    case PREFIX_TYPE_LEGACY:
-        switch (prefix_group_1(instance)) {
-        case PREFIX_LOCK:
-            buf_write_8(buf, 0xf0);
-            break;
-        case PREFIX_REPNZ:
-            buf_write_8(buf, 0xf2);
-            break;
-        case PREFIX_REPZ:
-            buf_write_8(buf, 0xf3);
-            break;
-        }
-        switch (prefix_group_2(instance)) {
-        case PREFIX_OVERRIDE_CS:
-            buf_write_8(buf, 0x2e);
-            break;
-        case PREFIX_OVERRIDE_SS:
-            buf_write_8(buf, 0x36);
-            break;
-        case PREFIX_OVERRIDE_DS:
-            buf_write_8(buf, 0x3e);
-            break;
-        case PREFIX_OVERRIDE_ES:
-            buf_write_8(buf, 0x26);
-            break;
-        case PREFIX_OVERRIDE_FS:
-            buf_write_8(buf, 0x64);
-            break;
-        case PREFIX_OVERRIDE_GS:
-            buf_write_8(buf, 0x65);
-            break;
-        }
-        if (prefix_group_3(instance)) {
-            buf_write_8(buf, 0x66);
-        }
-        if (prefix_group_4(instance)) {
-            buf_write_8(buf, 0x67);
-        }
-        if (prefix_has_rex(instance)) {
-            uint8_t rex_byte = 0x40;
-            rex_byte |= prefix_flag_w(instance) << 3;
-            rex_byte |= prefix_flag_r(instance) << 2;
-            rex_byte |= prefix_flag_x(instance) << 1;
-            rex_byte |= prefix_flag_b(instance);
-            buf_write_8(buf, rex_byte);
-        }
-        write_opcode(buf, instance);
-        write_modrm_sib(buf, instance);
-        write_disp(buf, instance);
-        write_imm(buf, instance);
-        return;
-    case PREFIX_TYPE_VEX:
-        bool prefix_vex_short = !prefix_flag_x(instance) &&
-                                !prefix_flag_b(instance) &&
-                                !prefix_flag_w(instance) &&
-                                (prefix_vex_map_select(instance) == 1);
-        if (prefix_vex_short || prefix_vex_vexsize_override(instance)) {
-            uint8_t vex_byte_1 = 0;
-            vex_byte_1 ^= prefix_flag_r(instance) << 7;
-            vex_byte_1 ^= prefix_vex_op_2(instance) << 3;
-            vex_byte_1 |= prefix_vex_256(instance) << 2;
-            vex_byte_1 |= prefix_vex_implicit(instance);
-            buf_write_8(buf, 0xc5);
-            buf_write_8(buf, vex_byte_1);
-        }
-        else {
-            uint8_t vex_byte_1 = 0;
-            vex_byte_1 ^= prefix_flag_r(instance) << 7;
-            vex_byte_1 ^= prefix_flag_x(instance) << 6;
-            vex_byte_1 ^= prefix_flag_b(instance) << 5;
-            vex_byte_1 |= prefix_vex_map_select(instance);
-            uint8_t vex_byte_2 = 0;
-            vex_byte_2 |= prefix_flag_w(instance) << 7;
-            vex_byte_2 ^= prefix_vex_op_2(instance) << 3;
-            vex_byte_2 |= prefix_vex_256(instance) << 2;
-            vex_byte_2 |= prefix_vex_implicit(instance);
-            buf_write_8(buf, 0xc4);
-            buf_write_8(buf, vex_byte_1);
-            buf_write_8(buf, vex_byte_2);
-        }
-        write_opcode(buf, instance);
-        write_modrm_sib(buf, instance);
-        write_disp(buf, instance);
-        write_imm(buf, instance);
-        return;
-    case PREFIX_TYPE_3DNOW:
-        buf_write_16(buf, 0x0f0f);
-        write_modrm_sib(buf, instance);
-        write_disp(buf, instance);
-        write_opcode(buf, instance);
-        return;
+    switch (instance_type(instance)) {
+    case INSTR_TYPE_LEGACY:
+        write_legacy_instance(buf, instance);
+        break;
+    case INSTR_TYPE_VEX:
+        write_vex_instance(buf, instance);
+        break;
+    case INSTR_TYPE_3DNOW:
+        write_3dnow_instance(buf, instance);
+        break;
     }
 }
 
